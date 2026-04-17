@@ -49,8 +49,8 @@ class RecommendationService:
         items = self.__item_repo.get_all()
         users = self.__user_repo.get_all()
 
-        self.__num_users = len(users)
-        self.__num_items = len(items)
+        self.__num_users = max((u.user_id for u in users), default=0) + 1
+        self.__num_items = max((i.item_id for i in items), default=0) + 1
 
         # Fit lightweight models
         self.__popularity.fit(interactions)
@@ -80,8 +80,8 @@ class RecommendationService:
         items = self.__item_repo.get_all()
         users = self.__user_repo.get_all()
 
-        self.__num_users = len(users)
-        self.__num_items = len(items)
+        self.__num_users = max((u.user_id for u in users), default=0) + 1
+        self.__num_items = max((i.item_id for i in items), default=0) + 1
 
         self.__popularity.fit(interactions)
         self.__content.fit(items)
