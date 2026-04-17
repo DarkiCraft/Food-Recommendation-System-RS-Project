@@ -19,5 +19,9 @@ class ItemRepo:
     def get_by_id(self, item_id: int):
         return self.__db.get(ItemModel, item_id)
 
-    def get_by_restaurant(self, restaurant_id: int):
-        return self.__db.query(ItemModel).filter(ItemModel.restaurant_id == restaurant_id).all()
+    def delete(self, item_id: int):
+        item = self.get_by_id(item_id)
+        if item:
+            self.__db.delete(item)
+            self.__db.commit()
+        return item

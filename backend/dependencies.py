@@ -2,7 +2,7 @@ import os
 
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from sqlalchemy.orm import Session
 
 from database import session_local
@@ -14,6 +14,7 @@ from repos.user import UserRepo
 from services.activity import ActivityService
 from services.auth import AuthService
 from services.recommend import RecommendationService
+from services.admin import AdminService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -25,6 +26,14 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> int:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+
+api_key_header = APIKeyHeader(name="X-Admin-Token")
+
+def get_admin_token(api_key: str = Depends(api_key_header)):
+    if not api_key or api_key != os.getenv("ADMIN_API_KEY"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or missing admin API key")
+    return api_key
 
 
 def get_db():
@@ -49,7 +58,6 @@ def get_rating_repo(db: Session = Depends(get_db)):
 
 def get_user_repo(db: Session = Depends(get_db)):
     return UserRepo(db)
-
 
 def get_auth_service(repo: UserRepo = Depends(get_user_repo)):
     return AuthService(repo)
@@ -77,3 +85,11 @@ def get_recommendation_service(
         item_repo,
         user_repo
     )
+
+def get_admin_service(
+    user_repo = Depends(get_user_repo),
+    item_repo = Depends(get_item_repo),
+    interaction_repo = Depends(get_interaction_repo),
+    order_repo = Depends(get_order_repo)
+):
+    return AdminService(user_repo, item_repo, interaction_repo, order_repo)

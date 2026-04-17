@@ -1,6 +1,5 @@
 # Web Frameworks
 fastapi[standard]
-streamlit # kept for legacy/ only, will be removed in the future
 
 # Machine Learning
 numpy

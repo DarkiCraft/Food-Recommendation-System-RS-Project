@@ -15,12 +15,3 @@ def get_recommendations(
 ):
     item_ids = service.recommend(request, user_id)
     return {"recommendations": item_ids}
-
-
-@router.post("/retrain")
-def retrain(
-        user_id: int = Depends(get_current_user), # some admin check later
-        service: RecommendationService = Depends(get_recommendation_service)
-):
-    service.retrain()
-    return {"message": "Retrain complete"}
