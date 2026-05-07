@@ -18,3 +18,7 @@ pyjwt
 pydantic
 pydantic[email]
 python-dotenv
+
+# Testing
+pytest
+httpx

@@ -1,0 +1,89 @@
+@startuml
+title Munchify Backend - Component Diagram
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+actor "Client (Web/Mobile)" as Client
+actor "Admin Client" as AdminClient
+
+component "FastAPI App\n(main.py)" as App
+component "Dependencies\n(dependencies.py)" as Deps
+
+package "Controllers (API)" {
+  component "Auth Controller\n/controllers/auth.py" as CAuth
+  component "Activity Controller\n/controllers/activity.py" as CAct
+  component "Recommendations Controller\n/controllers/recommend.py" as CRec
+  component "Admin Controller\n/controllers/admin.py" as CAdmin
+}
+
+package "Services" {
+  component "AuthService" as SAuth
+  component "ActivityService" as SAct
+  component "RecommendationService" as SRec
+  component "AdminService" as SAdmin
+}
+
+package "Repositories" {
+  component "UserRepo" as RUser
+  component "ItemRepo" as RItem
+  component "InteractionRepo" as RInter
+  component "OrderRepo" as ROrder
+  component "RatingRepo" as RRating
+}
+
+database "Postgres (via SQLAlchemy)\n(database.py)" as DB
+component "ORM Models\n(models/*)" as Models
+
+package "Recommender" {
+  component "PopularityRecommender" as Pop
+  component "ContentBasedRecommender" as Content
+  component "SVDRecommender" as SVD
+  component "NCFModel (PyTorch)\n+ artifacts/ncf_model.pth" as NCF
+}
+
+Client --> App : HTTP REST
+AdminClient --> App : HTTP REST\nX-Admin-Token
+
+App --> CAuth : include_router
+App --> CAct : include_router
+App --> CRec : include_router
+App --> CAdmin : include_router
+
+CAuth --> Deps : Depends(get_auth_service)
+CAct --> Deps : Depends(get_activity_service)\nDepends(get_current_user)
+CRec --> Deps : Depends(get_recommendation_service)\nDepends(get_current_user)
+CAdmin --> Deps : Depends(get_admin_service)\nDepends(get_admin_token)
+
+Deps --> SAuth
+Deps --> SAct
+Deps --> SRec
+Deps --> SAdmin
+
+SAuth --> RUser
+SAct --> RInter
+SAct --> RItem
+SAct --> ROrder
+SAct --> RRating
+SRec --> RInter
+SRec --> RItem
+SRec --> RUser
+SAdmin --> RUser
+SAdmin --> RItem
+SAdmin --> RInter
+SAdmin --> ROrder
+
+RUser --> DB
+RItem --> DB
+RInter --> DB
+ROrder --> DB
+RRating --> DB
+
+DB --> Models
+
+SRec --> Pop
+SRec --> Content
+SRec --> SVD
+SRec --> NCF
+
+@enduml

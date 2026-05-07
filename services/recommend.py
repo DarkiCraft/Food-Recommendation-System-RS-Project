@@ -91,11 +91,20 @@ class RecommendationService:
         self.__train_ncf(interactions)
 
     def recommend(self, request: RecommendRequest, user_id: int):
+        # Support repeated query params: /recommendations?k=3&k=5
+        ks = sorted({int(k) for k in (request.k or []) if int(k) > 0})
+        if not ks:
+            ks = [5]
+        max_k = ks[-1]
+
         interactions = self.__interaction_repo.get_by_user(user_id)
 
         # Cold start — no history
         if not interactions:
-            return self.__popularity.recommend(request.k)
+            ranked_ids = self.__popularity.recommend(max_k)
+            if len(ks) == 1:
+                return ranked_ids[:max_k]
+            return {str(k): ranked_ids[:k] for k in ks}
 
         all_item_ids = [item.item_id for item in self.__item_repo.get_all()]
         scores = {item_id: 0.0 for item_id in all_item_ids}
@@ -127,6 +136,7 @@ class RecommendationService:
 
         # Sort and return top k
         ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        return RecommendResponse(
-            recommendations=[item_id for item_id, _ in ranked[:request.k]]
-        )
+        ranked_ids = [item_id for item_id, _ in ranked]
+        if len(ks) == 1:
+            return RecommendResponse(recommendations=ranked_ids[:max_k])
+        return {str(k): ranked_ids[:k] for k in ks}

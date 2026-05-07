@@ -1,0 +1,75 @@
+@startuml
+title Activity - Click, Order, Rate
+
+autonumber
+skinparam shadowing false
+
+actor Client
+participant "FastAPI\n/controllers/activity.py" as Controller
+participant "ActivityService\n/services/activity.py" as Service
+participant "ItemRepo" as ItemRepo
+participant "OrderRepo" as OrderRepo
+participant "InteractionRepo" as InteractionRepo
+participant "RatingRepo" as RatingRepo
+database "DB" as DB
+
+== Click (/activity/click) ==
+Client -> Controller : POST /activity/click\nClickRequest(item_id)\nAuthorization: Bearer <jwt>
+Controller -> Service : click(request,user_id)
+Service -> ItemRepo : get_by_id(item_id)
+ItemRepo -> DB : SELECT items WHERE id=...
+DB --> ItemRepo : ItemModel | null
+ItemRepo --> Service : ItemModel | null
+alt item missing
+  Service --> Controller : ValueError("Item not found")
+  Controller --> Client : 4xx (exception handler dependent)
+else ok
+  Service -> InteractionRepo : create(InteractionModel(...CLICK...))
+  InteractionRepo -> DB : INSERT interactions
+  DB --> InteractionRepo : InteractionModel
+  InteractionRepo --> Service : InteractionModel
+  Service --> Controller : (no body)
+  Controller --> Client : 200 OK
+end
+
+== Order (/activity/order) ==
+Client -> Controller : POST /activity/order\nOrderRequest(item_id)\nAuthorization: Bearer <jwt>
+Controller -> Service : order(request,user_id)
+Service -> ItemRepo : get_by_id(item_id)
+ItemRepo -> DB : SELECT items
+DB --> ItemRepo : ItemModel | null
+alt item missing
+  Service --> Controller : ValueError("Item not found")
+  Controller --> Client : 4xx
+else ok
+  Service -> OrderRepo : create(OrderModel(...))
+  OrderRepo -> DB : INSERT orders
+  DB --> OrderRepo : OrderModel
+  Service -> InteractionRepo : create(InteractionModel(...ORDER...))
+  InteractionRepo -> DB : INSERT interactions
+  DB --> InteractionRepo : InteractionModel
+  Service --> Controller : OrderResponse(order_id,item_id,timestamp)
+  Controller --> Client : 200 OK\nOrderResponse
+end
+
+== Rate (/activity/rate) ==
+Client -> Controller : POST /activity/rate\nRateRequest(order_id,rating)\nAuthorization: Bearer <jwt>
+Controller -> Service : rate(request,user_id)
+Service -> OrderRepo : get_by_id(order_id)
+OrderRepo -> DB : SELECT orders WHERE id=...
+DB --> OrderRepo : OrderModel | null
+alt order missing
+  Service --> Controller : ValueError("Order not found")
+  Controller --> Client : 4xx
+else wrong user
+  Service --> Controller : ValueError("User not found")
+  Controller --> Client : 4xx
+else ok
+  Service -> RatingRepo : create(RatingModel(order_id,...))
+  RatingRepo -> DB : INSERT ratings
+  DB --> RatingRepo : RatingModel
+  Service --> Controller : (no body)
+  Controller --> Client : 200 OK
+end
+
+@enduml

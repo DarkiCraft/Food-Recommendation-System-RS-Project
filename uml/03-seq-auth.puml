@@ -1,0 +1,42 @@
+@startuml
+title Auth - Signup & Login
+
+autonumber
+skinparam shadowing false
+
+actor Client
+participant "FastAPI\n/controllers/auth.py" as Controller
+participant "AuthService\n/services/auth.py" as Service
+participant "UserRepo\n/repos/user.py" as Repo
+database "DB" as DB
+
+== Signup (/auth/signup) ==
+Client -> Controller : POST /auth/signup\nSignupRequest(user_name,email,password)
+Controller -> Service : signup(request)
+Service -> Repo : create(UserModel(...bcrypt hash...))
+Repo -> DB : INSERT users
+DB --> Repo : persisted UserModel
+Repo --> Service : UserModel
+Service --> Controller : SignupResponse(user_id,user_name,email)
+Controller --> Client : 201 Created\nSignupResponse
+
+== Login (/auth/login) ==
+Client -> Controller : POST /auth/login\nOAuth2PasswordRequestForm(username=email,password)
+Controller -> Service : login(LoginRequest(email,password))
+Service -> Repo : get_by_email(email)
+Repo -> DB : SELECT users WHERE email=...
+DB --> Repo : UserModel | null
+Repo --> Service : UserModel | null
+
+alt user missing
+  Service --> Controller : ValueError("User not found")
+  Controller --> Client : 4xx (exception handler dependent)
+else password invalid
+  Service --> Controller : ValueError("Incorrect password")
+  Controller --> Client : 4xx (exception handler dependent)
+else ok
+  Service --> Controller : LoginResponse(access_token=JWT)
+  Controller --> Client : 200 OK\nLoginResponse
+end
+
+@enduml

@@ -1,0 +1,56 @@
+@startuml
+title Recommendations - GET /recommendations
+
+autonumber
+skinparam shadowing false
+
+actor Client
+participant "FastAPI\n/controllers/recommend.py" as Controller
+participant "RecommendationService\n/services/recommend.py" as Service
+participant "InteractionRepo" as InteractionRepo
+participant "ItemRepo" as ItemRepo
+participant "UserRepo" as UserRepo
+participant "PopularityRecommender" as Pop
+participant "ContentBasedRecommender" as Content
+participant "SVDRecommender" as SVD
+participant "NCFModel (PyTorch)" as NCF
+database "DB" as DB
+
+Client -> Controller : GET /recommendations?k=K\nAuthorization: Bearer <jwt>
+Controller -> Service : recommend(request,user_id)
+
+Service -> InteractionRepo : get_by_user(user_id)
+InteractionRepo -> DB : SELECT interactions WHERE user_id=...
+DB --> InteractionRepo : interactions[]
+InteractionRepo --> Service : interactions[]
+
+alt cold start (no interactions)
+  Service -> Pop : recommend(k)
+  Pop --> Service : item_ids[]
+  Service --> Controller : RecommendResponse(recommendations=item_ids)
+  Controller --> Client : 200 OK\n{"recommendations":[...]}
+else has history
+  Service -> ItemRepo : get_all()
+  ItemRepo -> DB : SELECT items
+  DB --> ItemRepo : items[]
+  ItemRepo --> Service : items[]
+
+  Service -> SVD : recommend(user_id, k=all_items)
+  SVD --> Service : ranked_item_ids[]
+
+  Service -> Content : recommend(interactions, k=all_items)
+  Content --> Service : ranked_item_ids[]
+
+  opt NCF available + in-range user_id
+    Service -> NCF : predict_ncf(user_id, num_items)
+    NCF --> Service : scores[]
+  end
+
+  Service -> Pop : recommend(k=all_items)
+  Pop --> Service : ranked_item_ids[]
+
+  Service --> Controller : RecommendResponse(top K)
+  Controller --> Client : 200 OK\n{"recommendations":[...]}
+end
+
+@enduml

@@ -8,8 +8,6 @@ from models.user import UserModel
 from repos.user import UserRepo
 from schemas.auth import SignupRequest, LoginRequest, SignupResponse, LoginResponse
 
-JWT_KEY = os.getenv("JWT_KEY")
-
 
 class AuthService:
     def __init__(self, user_repo: UserRepo):
@@ -21,11 +19,14 @@ class AuthService:
             raise ValueError("User not found")
         if not bcrypt.checkpw(password.encode(), user.password_hash):
             raise ValueError("Incorrect password")
+        jwt_key = os.getenv("JWT_KEY")
+        if not jwt_key:
+            raise RuntimeError("JWT_KEY is not configured")
         return LoginResponse(access_token=jwt.encode({
                 "user_id": user.user_id,
                 "exp": datetime.now(timezone.utc) + timedelta(days=1)
             },
-            JWT_KEY, algorithm="HS256")
+            jwt_key, algorithm="HS256")
         )
 
     def signup(self, request: SignupRequest):

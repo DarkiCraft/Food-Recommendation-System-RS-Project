@@ -1,0 +1,63 @@
+@startuml
+title Munchify Backend - Domain Model (DB Entities)
+
+hide circle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "models" {
+  class UserModel {
+    +user_id: int
+    +user_name: str
+    +email: str
+    +password_hash: bytes
+    +signup_date: datetime
+  }
+
+  class ItemModel {
+    +item_id: int
+    +item_name: str
+    +cuisine: str
+  }
+
+  enum InteractionType {
+    CLICK
+    ORDER
+  }
+
+  class InteractionModel {
+    +interaction_id: int
+    +user_id: int
+    +item_id: int
+    +interaction_type: InteractionType
+    +timestamp: datetime
+  }
+
+  class OrderModel {
+    +order_id: int
+    +user_id: int
+    +item_id: int
+    +timestamp: datetime
+  }
+
+  class RatingModel {
+    +rating_id: int
+    +order_id: int
+    +timestamp: datetime
+    +rating: int
+  }
+}
+
+' Foreign-key intent (these are stored as ids; ORM relationships are not defined in code)
+UserModel "1" <-- "0..*" InteractionModel : user_id FK
+ItemModel "1" <-- "0..*" InteractionModel : item_id FK
+UserModel "1" <-- "0..*" OrderModel : user_id FK
+ItemModel "1" <-- "0..*" OrderModel : item_id FK
+OrderModel "1" <-- "0..1" RatingModel : order_id FK (unique)
+
+note right of RatingModel
+Each order can have at most one rating
+(unique FK in schema)
+end note
+
+@enduml
