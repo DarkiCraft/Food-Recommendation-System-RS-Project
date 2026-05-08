@@ -19,6 +19,11 @@ class ItemRepo:
     def get_by_id(self, item_id: int):
         return self.__db.get(ItemModel, item_id)
 
+    def get_by_ids(self, item_ids: list[int]):
+        if not item_ids:
+            return []
+        return self.__db.query(ItemModel).filter(ItemModel.item_id.in_(item_ids)).all()
+
     def delete(self, item_id: int):
         item = self.get_by_id(item_id)
         if item:

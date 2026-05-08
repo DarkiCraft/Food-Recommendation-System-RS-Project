@@ -8,7 +8,7 @@ from recommender.content import ContentBasedRecommender
 from repos.interaction import InteractionRepo
 from repos.item import ItemRepo
 from repos.user import UserRepo
-from schemas.recommend import RecommendRequest, RecommendResponse
+from schemas.recommend import RecommendResponse
 
 ARTIFACTS_DIR = os.path.join(os.path.dirname(__file__), "..", "artifacts")
 NCF_MODEL_PATH = os.path.join(ARTIFACTS_DIR, "ncf_model.pth")
@@ -90,12 +90,12 @@ class RecommendationService:
         self.__ncf = NCFModel(self.__num_users, self.__num_items, EMBEDDING_DIM)
         self.__train_ncf(interactions)
 
-    def recommend(self, request: RecommendRequest, user_id: int):
+    def recommend(self, k: int, user_id: int) -> RecommendResponse:
         interactions = self.__interaction_repo.get_by_user(user_id)
 
         # Cold start — no history
         if not interactions:
-            return self.__popularity.recommend(request.k)
+            return RecommendResponse(recommendations=self.__popularity.recommend(k))
 
         all_item_ids = [item.item_id for item in self.__item_repo.get_all()]
         scores = {item_id: 0.0 for item_id in all_item_ids}
@@ -128,5 +128,5 @@ class RecommendationService:
         # Sort and return top k
         ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return RecommendResponse(
-            recommendations=[item_id for item_id, _ in ranked[:request.k]]
+            recommendations=[item_id for item_id, _ in ranked[:k]]
         )

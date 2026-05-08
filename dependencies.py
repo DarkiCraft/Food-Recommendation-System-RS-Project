@@ -13,6 +13,7 @@ from repos.rating import RatingRepo
 from repos.user import UserRepo
 from services.activity import ActivityService
 from services.auth import AuthService
+from services.item import ItemService
 from services.recommend import RecommendationService
 from services.admin import AdminService
 
@@ -20,7 +21,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> int:
     try:
-        payload = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=["HS256"])
+        payload = jwt.decode(token, os.getenv("JWT_KEY"), algorithms=["HS256"])
         return payload["user_id"]
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
@@ -85,6 +86,9 @@ def get_recommendation_service(
         item_repo,
         user_repo
     )
+
+def get_item_service(item_repo: ItemRepo = Depends(get_item_repo)):
+    return ItemService(item_repo)
 
 def get_admin_service(
     user_repo = Depends(get_user_repo),
